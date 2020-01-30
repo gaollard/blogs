@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+</head>
+<body>
+  1. 相同模块的并发加载问题?
+</body>
+<script>
+  // 模块加载配置
+  var config = {
+    baseDir: window.location.origin + '/module'
+  }
+
+  // loader 模块加载器
+  var loader = {
+    // 配置
+    config: {
+      baseDir: window.location.origin + '/module'
+    },
+
+    // 缓存
+    modules: {},
+
+    installed: {},
+
+    status: {},
+
+    // 定义模块
+    define: function(name, fn) {
+      this.modules[name] = fn ? fn() : undefined
+    },
+
+    // 加载模块
+    require: function(name, fn) {
+      if (this.modules[name]) {
+        // 已经加载成功, 直接从缓存读取
+        callback(this.modules[name])
+      } else {
+        if (this.status[name]) {
+          // 加载过了, 但是还未加载成功
+          this.installed[name].push(fn)
+        } else {
+          // 还未加载过
+          this.installed[name] = []
+          this.installed[name].push(fn)
+          this.loadScript(name)
+          this.status[name] = true
+        }
+      }
+    },
+
+    // 加载JS文件
+    loadScript: function (name, callback) {
+      let _this = this
+      let script = document.createElement('script')
+
+      script.src = this.config.baseDir + '/' + name + '.js'
+      script.onload = function () {
+        _this.installed[name].forEach(fn => fn(_this.modules[name]))
+      }
+      setTimeout(() => {
+        // 模拟请求时间
+        document.body.append(script)
+      }, 200)
+    }
+  }
+
+  loader.require('lazyload', function(lazyload){
+    console.log(Date.now())
+    lazyload()
+  })
+
+  loader.require('lazyload', function(lazyload){
+    console.log(Date.now())
+    lazyload()
+  })
+
+  loader.require('moment', function(moment){
+    console.log(moment)
+  })
+</script>
+</html>
