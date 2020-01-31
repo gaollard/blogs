@@ -25,7 +25,7 @@ var loader = {
       fn = args[1]
     } else if (args.length === 3) {
       name = args[0]
-      deps = (typeof args[1] === 'string') ? [deps] : deps
+      deps = (typeof args[1] === 'string') ? [args[1]] : args[1]
       fn = args[2]
     } else {
       throw "invalid params for define function"
@@ -83,7 +83,7 @@ var loader = {
           fn(_this.modules[name])
         } else {
           _this.deps[name].forEach(dep => {
-            // 加载依赖
+            // 加载依赖, 这里存在bug, 当dep已经被加载过时, 会导致cb重复执行多次
             _this.require(dep, () => {
               // 这里每一个依赖的回调都相同, 后续将加载多个依赖的逻辑抽离出去
               _this.modules[name] = _this.moduleDefined[name]();
