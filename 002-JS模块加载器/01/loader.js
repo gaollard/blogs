@@ -41,24 +41,47 @@ var loader = {
   /**
    * @description 加载模块
    * @param {string} name 模块名
-   * @param {*} fn 回调函数
+   * @param {*} requireCb 加载完成回调函数
    */
-  require: function(name, fn) {
+  require: function(name, requireCb) {
     if (this.modules[name]) {
       // 已经加载成功, 直接从缓存读取
-      callback(this.modules[name])
+      requireCb(this.modules[name])
     } else {
       if (this.status[name]) {
         // 加载过了, 但是还未加载成功
-        this.installed[name].push(fn)
+        this.installed[name].push(requireCb)
       } else {
         // 还未加载过
         this.installed[name] = []
-        this.installed[name].push(fn)
+        this.installed[name].push(requireCb)
         this.loadScript(name)
         this.status[name] = true
       }
     }
+  },
+
+  /**
+   * @description 加载多个模块
+   * @param {string} names 模块名数组
+   * @param {*} fn 回调函数
+   */
+  requires: function(names, fn) {
+    let flags = {}
+    names.forEach(name => {
+      flags[name] = false
+    })
+    names.forEach(name => {
+      this.require(name, () => {
+        flags[name] = true
+      })
+    })
+    var timer = setInterval(() => {
+      if (Object.values(flags).filter(v => v).length === names.length) {
+        fn && fn()
+        clearInterval(timer)
+      }
+    }, 10)
   },
 
   /**
@@ -74,28 +97,21 @@ var loader = {
       // 需要注意, 当模块的JS文件加载完成, 不能立即调用require(name, fn) 所注册的fn回调函数
       // 因为它可能依赖其它模块, 需要将依赖的模块也加载完成之后, 再触发
       // _this.installed[name] 为数组是因为并行加载时, 注册了多个回调
-      _this.installed[name].forEach(fn => {
-        if (!_this.deps[name]) {
-          // 该模块没有依赖其他模块
-          // 通过模块导出函数获取该模块的导出值
+      if (!_this.deps[name]) {
+        _this.modules[name] = _this.moduleDefined[name]();
+        _this.installed[name].forEach(fn => {
+          fn(_this.modules[name]);
+        })
+      } else {
+        _this.requires(_this.deps[name], () => {
+          // 依赖项全部加载完成
           _this.modules[name] = _this.moduleDefined[name]();
-          // 执行回调
-          fn(_this.modules[name])
-        } else {
-          _this.deps[name].forEach(dep => {
-            // 加载依赖, 这里存在bug, 当dep已经被加载过时, 会导致cb重复执行多次
-            _this.require(dep, () => {
-              // 这里每一个依赖的回调都相同, 后续将加载多个依赖的逻辑抽离出去
-              _this.modules[name] = _this.moduleDefined[name]();
-              _this.installed[name].forEach(fn => fn(_this.modules[name]))
-            })
+          _this.installed[name].forEach(fn => {
+            fn(_this.modules[name]);
           })
-        }
-      })
+        });
+      }
     }
-    setTimeout(() => {
-      // 模拟HTTP请求时间
-      document.body.append(script)
-    }, 100)
+    document.body.append(script)
   }
 }

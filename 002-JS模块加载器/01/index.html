@@ -9,9 +9,16 @@
 <body></body>
 <script src="./loader.js"></script>
 <script>
-  loader.require('toolbar', function(toolbar){
-    // toolbar()
-    // console.log('require toolbar', Date.now())
+  loader.require('lazyload', function(){
+    console.log('require lazyload')
   })
+
+  loader.require('toolbar', function(toolbar){
+    console.log('require toolbar', Date.now())
+  })
+
+  // loader.require('toolbar', function(toolbar){
+  //   console.log('require toolbar', Date.now())
+  // })
 </script>
 </html>
